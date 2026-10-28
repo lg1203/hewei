@@ -1,0 +1,18 @@
+{
+  "description": "禾味点餐小程序 web-view 壳",
+  "packOptions": {
+    "ignore": []
+  },
+  "setting": {
+    "urlCheck": false,
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": true
+  },
+  "compileType": "miniprogram",
+  "libVersion": "3.5.0",
+  "appid": "touristappid",
+  "projectname": "hewei-dining-miniprogram",
+  "miniprogramRoot": "./"
+}

@@ -1,0 +1,339 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Admin {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  password  String
+  name      String
+  createdAt DateTime @default(now())
+}
+
+model Merchant {
+  id        String   @id @default(cuid())
+  phone     String   @unique
+  password  String
+  name      String
+  status    String   @default("ACTIVE")
+  createdAt DateTime @default(now())
+  shop      Shop?
+}
+
+model Shop {
+  id               String          @id @default(cuid())
+  merchantId       String          @unique
+  merchant         Merchant        @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  name             String
+  address          String          @default("")
+  phone            String          @default("")
+  description      String          @default("")
+  announcement     String          @default("")
+  businessHours    String          @default("09:00-21:00")
+  cover            String          @default("")
+  status           String          @default("ACTIVE")
+  pointsEarnRate   Int             @default(1)
+  pointsRedeemRate Int             @default(100)
+  maxPointsRatio   Int             @default(50)
+  createdAt        DateTime        @default(now())
+  categories       Category[]
+  dishes           Dish[]
+  tables           Table[]
+  orders           Order[]
+  sessions         DiningSession[]
+  coupons          Coupon[]
+}
+
+model User {
+  id                     String                  @id @default(cuid())
+  phone                  String                  @unique
+  password               String
+  name                   String
+  avatar                 String                  @default("")
+  balance                Int                     @default(0)
+  points                 Int                     @default(0)
+  status                 String                  @default("ACTIVE")
+  hasUsedMembershipTrial Boolean                 @default(false)
+  createdAt              DateTime                @default(now())
+  coupons                UserCoupon[]
+  orders                 Order[]
+  pointTx                PointTransaction[]
+  balanceTx              BalanceTransaction[]
+  memberships            Membership[]
+  membershipTx           MembershipTransaction[]
+}
+
+model Category {
+  id     String @id @default(cuid())
+  shopId String
+  shop   Shop   @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  name   String
+  sort   Int    @default(0)
+  dishes Dish[]
+
+  @@unique([shopId, name])
+}
+
+model Dish {
+  id          String      @id @default(cuid())
+  shopId      String
+  shop        Shop        @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  categoryId  String?
+  category    Category?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  name        String
+  description String      @default("")
+  price       Int
+  image       String      @default("")
+  status      String      @default("ACTIVE")
+  isRequired  Boolean     @default(false)
+  sort        Int         @default(0)
+  defaultQty  Int         @default(50)
+  createdAt   DateTime    @default(now())
+  dailyStocks DishDaily[]
+  orderItems  OrderItem[]
+
+  @@unique([shopId, name])
+}
+
+model DishDaily {
+  id       String @id @default(cuid())
+  dishId   String
+  dish     Dish   @relation(fields: [dishId], references: [id], onDelete: Cascade)
+  date     String
+  totalQty Int
+  soldQty  Int    @default(0)
+
+  @@unique([dishId, date])
+}
+
+model Table {
+  id        String          @id @default(cuid())
+  shopId    String
+  shop      Shop            @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  name      String
+  qrToken   String          @unique
+  status    String          @default("IDLE")
+  createdAt DateTime        @default(now())
+  sessions  DiningSession[]
+  orders    Order[]
+
+  @@unique([shopId, name])
+}
+
+model DiningSession {
+  id             String      @id @default(cuid())
+  shopId         String
+  shop           Shop        @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  tableId        String
+  table          Table       @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  status         String      @default("OPEN")
+  openedAt       DateTime    @default(now())
+  closedAt       DateTime?
+  subtotal       Int         @default(0)
+  couponDiscount Int         @default(0)
+  pointsUsed     Int         @default(0)
+  pointsDiscount Int         @default(0)
+  memberDiscount Int         @default(0)
+  totalAmount    Int         @default(0)
+  paymentMethod  String?
+  paidAt         DateTime?
+  orders         Order[]
+  userCoupon     UserCoupon?
+
+  @@index([shopId, status])
+}
+
+model Order {
+  id             String         @id @default(cuid())
+  orderNo        String         @unique
+  shopId         String
+  shop           Shop           @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  tableId        String?
+  table          Table?         @relation(fields: [tableId], references: [id], onDelete: SetNull)
+  sessionId      String?
+  session        DiningSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  userId         String?
+  user           User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  type           String         @default("SELF")
+  status         String         @default("PENDING")
+  subtotal       Int
+  couponDiscount Int            @default(0)
+  pointsUsed     Int            @default(0)
+  pointsDiscount Int            @default(0)
+  memberDiscount Int            @default(0)
+  total          Int
+  paymentMethod  String         @default("BALANCE")
+  remark         String         @default("")
+  createdAt      DateTime       @default(now())
+  paidAt         DateTime?
+  items          OrderItem[]
+  userCoupon     UserCoupon?
+
+  @@index([shopId, createdAt])
+  @@index([sessionId])
+}
+
+model OrderItem {
+  id       String  @id @default(cuid())
+  orderId  String
+  order    Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  dishId   String?
+  dish     Dish?   @relation(fields: [dishId], references: [id], onDelete: SetNull)
+  dishName String
+  price    Int
+  quantity Int
+  amount   Int
+  isGift   Boolean @default(false)
+}
+
+model Coupon {
+  id           String       @id @default(cuid())
+  shopId       String?
+  shop         Shop?        @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  title        String
+  description  String       @default("")
+  type         String
+  threshold    Int          @default(0)
+  value        Int          @default(0)
+  discountRate Int?
+  totalQty     Int          @default(100)
+  claimedQty   Int          @default(0)
+  perUserLimit Int          @default(1)
+  startAt      DateTime
+  endAt        DateTime
+  status       String       @default("ACTIVE")
+  source       String       @default("MERCHANT")
+  createdAt    DateTime     @default(now())
+  userCoupons  UserCoupon[]
+}
+
+model UserCoupon {
+  id        String         @id @default(cuid())
+  userId    String
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  couponId  String
+  coupon    Coupon         @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  status    String         @default("UNUSED")
+  claimedAt DateTime       @default(now())
+  usedAt    DateTime?
+  orderId   String?        @unique
+  order     Order?         @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  sessionId String?        @unique
+  session   DiningSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  @@index([userId, status])
+}
+
+model PointTransaction {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount    Int
+  type      String
+  note      String   @default("")
+  orderId   String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model BalanceTransaction {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount    Int
+  type      String
+  note      String   @default("")
+  orderId   String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model Config {
+  key   String @id
+  value String
+}
+
+model Activity {
+  id        String    @id @default(cuid())
+  title     String
+  subtitle  String    @default("")
+  content   String    @default("")
+  poster    String    @default("")
+  link      String    @default("")
+  status    String    @default("ACTIVE")
+  sort      Int       @default(0)
+  startAt   DateTime?
+  endAt     DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([status, sort])
+}
+
+model MembershipPlan {
+  id               String       @id @default(cuid())
+  name             String       @unique
+  description      String       @default("")
+  billingCycle     String       @default("MONTHLY")
+  price            Int          @default(0)
+  originalPrice    Int          @default(0)
+  firstMonthFree   Boolean      @default(true)
+  trialDays        Int          @default(30)
+  discountRate     Int          @default(90)
+  freeDrink        Boolean      @default(true)
+  giftCategoryName String       @default("饮品甜点")
+  status           String       @default("ACTIVE")
+  sort             Int          @default(0)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  memberships      Membership[]
+
+  @@index([status, sort])
+}
+
+model Membership {
+  id                 String                  @id @default(cuid())
+  userId             String
+  user               User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planId             String
+  plan               MembershipPlan          @relation(fields: [planId], references: [id], onDelete: Restrict)
+  status             String                  @default("ACTIVE")
+  startedAt          DateTime                @default(now())
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime
+  autoRenew          Boolean                 @default(true)
+  trialUsed          Boolean                 @default(false)
+  cancelledAt        DateTime?
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+  transactions       MembershipTransaction[]
+
+  @@index([userId, status])
+  @@index([currentPeriodEnd])
+}
+
+model MembershipTransaction {
+  id            String     @id @default(cuid())
+  membershipId  String
+  membership    Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planName      String
+  type          String
+  amount        Int        @default(0)
+  billingCycle  String
+  periodStart   DateTime
+  periodEnd     DateTime
+  paymentMethod String     @default("FREE")
+  note          String     @default("")
+  createdAt     DateTime   @default(now())
+
+  @@index([userId, createdAt])
+}

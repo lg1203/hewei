@@ -1,0 +1,11 @@
+{
+  "pages": ["pages/index/index"],
+  "window": {
+    "navigationBarTitleText": "禾味点餐",
+    "navigationBarBackgroundColor": "#f97316",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#f6f7f9"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}
